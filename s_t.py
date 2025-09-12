@@ -7,36 +7,37 @@ from bokeh.models import Button, CustomJS
 from streamlit_bokeh_events import streamlit_bokeh_events
 from PIL import Image
 from gtts import gTTS
-from googletrans import Translator
+from deep_translator import GoogleTranslator
 
 # ------------------ Config ------------------
 st.set_page_config(page_title="TRADUCTOR INTERACTIVO", layout="centered")
 st.title("TRADUCTOR INTERACTIVO")
 st.subheader("HABLA Y LO TRADUCIRÉ")
 
-# Imagen (si no existe, muestra aviso en lugar de crash)
+# Imagen (segura)
 IMAGE_PATH = "imagen_2025-09-12_155805756.png"
 if os.path.exists(IMAGE_PATH):
     st.image(Image.open(IMAGE_PATH), width=300)
 else:
-    st.warning(f"No se encontró la imagen '{IMAGE_PATH}'. Puedes subirla o quitar esa línea.")
+    st.warning(f"No se encontró la imagen '{IMAGE_PATH}'.")
 
 with st.sidebar:
     st.subheader("Traductor")
     st.write(
         "Presiona el botón para grabar tu voz (Chrome/Chromium en localhost o HTTPS). "
-        "Cuando escuches la señal, di lo que quieras traducir. Si no funciona, escribe el texto abajo."
+        "Cuando escuches la señal, di lo que quieras traducir. "
+        "Si no funciona, escribe el texto abajo."
     )
 
-st.write("Presiona el botón y di lo que quieres traducir (solo en Chrome/Chromium).")
+st.write("Presiona el botón y di lo que quieres traducir:")
 
-# botón Bokeh + JS para usar webkitSpeechRecognition en el navegador
+# botón Bokeh + JS para usar webkitSpeechRecognition
 button = Button(label=" Escuchar  🎤", width=300, height=50)
 button.js_on_event("button_click", CustomJS(code="""
     var recognition = new webkitSpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = false;
-    recognition.lang = 'es-ES'; // puedes cambiar si quieres
+    recognition.lang = 'es-ES'; 
     recognition.onresult = function (e) {
         var value = "";
         for (var i = e.resultIndex; i < e.results.length; ++i) {
@@ -63,19 +64,19 @@ result = streamlit_bokeh_events(
     debounce_time=0,
 )
 
-# Si llega texto desde JS, lo usamos; si no, permitimos escribir manualmente
+# texto detectado o manual
 detected_text = ""
 if result and "GET_TEXT" in result:
     detected_text = result.get("GET_TEXT")
     if detected_text.startswith("__ERROR__:"):
-        st.error("Error en reconocimiento de voz del navegador: " + detected_text.replace("__ERROR__:", ""))
+        st.error("Error en reconocimiento de voz: " + detected_text.replace("__ERROR__:", ""))
         detected_text = ""
     else:
         st.success("Texto detectado: " + detected_text)
 
-text = st.text_area("Texto a traducir (detectado o escribe manualmente):", value=detected_text, height=120)
+text = st.text_area("Texto a traducir:", value=detected_text, height=120)
 
-# Crear carpeta temporal (segura)
+# carpeta temp
 os.makedirs("temp", exist_ok=True)
 
 # Mapas de idiomas
@@ -95,7 +96,7 @@ input_language = LANG_MAP.get(in_lang, "auto")
 output_language = LANG_MAP.get(out_lang, "es")
 
 english_accent = st.selectbox(
-    "Selecciona el acento (solo afecta cuando se pide tld para gTTS en inglés)",
+    "Selecciona el acento",
     ("Defecto", "Español", "Reino Unido", "Estados Unidos", "Canada", "Australia", "Irlanda", "Sudáfrica"),
 )
 
@@ -121,24 +122,15 @@ def safe_filename(s):
     return s[:40] or "audio"
 
 def text_to_speech(input_language, output_language, text, tld):
-    translator = Translator()
     try:
-        # intenta traducir con src definido; si falla, deja autodetección
-        translation = translator.translate(text, src=input_language if input_language != "auto" else None, dest=output_language)
-        trans_text = translation.text
+        trans_text = GoogleTranslator(source=input_language, target=output_language).translate(text)
     except Exception as e:
-        # intentar con autodetección
-        try:
-            translation = translator.translate(text, dest=output_language)
-            trans_text = translation.text
-        except Exception as e2:
-            raise RuntimeError(f"Error en traducción: {e2}") from e2
+        raise RuntimeError(f"Error en traducción: {e}")
 
-    # gTTS
     try:
         tts = gTTS(trans_text, lang=output_language, tld=tld, slow=False)
     except Exception as e:
-        raise RuntimeError(f"gTTS error: {e}") from e
+        raise RuntimeError(f"Error en gTTS: {e}")
 
     filename = safe_filename(text[:40])
     out_path = os.path.join("temp", f"{filename}.mp3")
@@ -146,8 +138,8 @@ def text_to_speech(input_language, output_language, text, tld):
     return out_path, trans_text
 
 if st.button("Convertir a audio"):
-    if not text or text.strip() == "":
-        st.warning("No hay texto para convertir. Habla o escribe algo primero.")
+    if not text.strip():
+        st.warning("No hay texto para convertir.")
     else:
         try:
             path, translated = text_to_speech(input_language, output_language, text, tld)
@@ -157,12 +149,12 @@ if st.button("Convertir a audio"):
             st.success("Audio generado correctamente.")
             st.download_button("Descargar MP3", data=audio_bytes, file_name=os.path.basename(path), mime="audio/mpeg")
             if display_output_text:
-                st.markdown("### Texto de salida:")
+                st.markdown("### Texto traducido:")
                 st.write(translated)
         except Exception as e:
-            st.error(f"Ocurrió un error al generar el audio: {e}")
+            st.error(f"Ocurrió un error: {e}")
 
-# limpieza: borrar mp3 más antiguos (en días)
+# limpiar audios viejos
 def remove_old_files(days=7):
     mp3_files = glob.glob("temp/*.mp3")
     if mp3_files:
@@ -176,7 +168,6 @@ def remove_old_files(days=7):
                 pass
 
 remove_old_files(7)
-
 
         
     
