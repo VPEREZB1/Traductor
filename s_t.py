@@ -70,8 +70,8 @@ st.markdown("""
 
 # Contenido de la app
 with st.container():
-    st.title("🎧 Traductor Interactivo")
-    st.subheader("Habla y te ayudo a traducir lo que dijiste.")
+    st.title("💫Traductor💫")
+    st.subheader("Habla y traduzco lo que digiste")
 
     image = Image.open("traductor.jpg")
     st.image(image, width=300)
