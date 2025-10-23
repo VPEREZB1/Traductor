@@ -73,7 +73,7 @@ with st.container():
     st.title("💫Traductor💫")
     st.subheader("Habla y traduzco lo que digiste")
 
-    image = Image.open("traductor.jpg")
+    image = Image.open("imagen_2025-09-12_155805756.png")
     st.image(image, width=300)
 
     with st.sidebar:
@@ -85,8 +85,8 @@ with st.container():
         4. ¡Escucha tu traducción en voz alta! 🎙️
         """)
 
-    st.markdown("## 🎤 Graba tu voz")
-    st.markdown("Presiona el botón y habla la frase que deseas traducir:")
+    st.markdown("## 🎤 Graba 🎤")
+    st.markdown("Presiona el botón y habla:")
 
     stt_button = Button(label="🎙️ Escuchar", width=300, height=50)
     stt_button.js_on_event("button_click", CustomJS(code="""
